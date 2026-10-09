@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Todo = {
   id: number;
@@ -8,20 +8,55 @@ type Todo = {
 
 function App() {
   const [title, setTitle] = useState("");
+  const [todos, setTodos] = useState<Todo[]>([]);
 
-  // Temporary UI data only
-  const [todos] = useState<Todo[]>([
-    {
-      id: 1,
-      title: "Learn TypeScript",
-      completed: false,
-    },
-    {
-      id: 2,
-      title: "Build Express API",
-      completed: true,
-    },
-  ]);
+  useEffect(() => {
+    async function fetchTodos() {
+      try {
+        const response = await fetch("http://localhost:5000/todo");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch todos");
+        }
+
+        const data: Todo[] = await response.json();
+        setTodos(data);
+      } catch (error) {
+        console.error("Error: ", error);
+      }
+    }
+
+    fetchTodos();
+  }, []);
+
+  async function handleAdd(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    if (!title.trim()) {
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:5000/todo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({ title }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to add todo");
+      }
+
+      const newTodo: Todo = await res.json();
+
+      setTodos((currentTodos) => [...currentTodos, newTodo]);
+      setTitle("");
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 px-4 py-10 text-white">
@@ -39,7 +74,10 @@ function App() {
             className="flex-1 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-white outline-none placeholder:text-gray-500 focus:border-blue-500"
           />
 
-          <button className="rounded-lg bg-blue-600 px-5 py-3 font-medium hover:bg-blue-500">
+          <button
+            className="rounded-lg bg-blue-600 px-5 py-3 font-medium hover:bg-blue-500"
+            onClick={(e) => handleAdd(e)}
+          >
             Add
           </button>
         </div>

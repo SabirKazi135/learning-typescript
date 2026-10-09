@@ -58,6 +58,30 @@ function App() {
     }
   }
 
+  async function handleComplete(id: number) {
+    const res = await fetch(`http://localhost:5000/todo/${id}`, {
+      method: "PATCH",
+    });
+
+    if (!res.ok) {
+      return;
+    }
+    const updatedTodos: Todo[] = await res.json();
+
+    setTodos(updatedTodos);
+  }
+
+  async function handleDelete(id: number) {
+    const res = await fetch(`http://localhost:5000/todo/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to delete todo");
+    }
+
+    setTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== id));
+  }
   return (
     <div className="min-h-screen bg-gray-950 px-4 py-10 text-white">
       <div className="mx-auto max-w-2xl">
@@ -106,11 +130,17 @@ function App() {
               </div>
 
               <div className="flex gap-2">
-                <button className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-400 hover:bg-green-500/20">
+                <button
+                  className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-400 hover:bg-green-500/20"
+                  onClick={() => handleComplete(todo.id)}
+                >
                   Complete
                 </button>
 
-                <button className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20">
+                <button
+                  onClick={() => handleDelete(todo.id)}
+                  className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
+                >
                   Delete
                 </button>
               </div>

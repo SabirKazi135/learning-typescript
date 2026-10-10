@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 type Todo = {
-  id: number;
+  _id: string;
   title: string;
   completed: boolean;
 };
@@ -9,6 +9,7 @@ type Todo = {
 function App() {
   const [title, setTitle] = useState("");
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchTodos() {
@@ -29,6 +30,43 @@ function App() {
     fetchTodos();
   }, []);
 
+  function handleEdit(todo: Todo) {
+    setTitle(todo.title);
+    setEditingId(todo._id);
+  }
+
+  async function handleupdate() {
+    if (!title.trim() || !editingId) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/todo/${editingId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update todo");
+      }
+
+      const updatedTodo: Todo = await res.json();
+
+      setTodos((currentTodos) =>
+        currentTodos.map((todo) =>
+          todo._id === updatedTodo._id ? updatedTodo : todo,
+        ),
+      );
+
+      setTitle("");
+      setEditingId(null);
+    } catch (error) {
+      console.error("Error updating todo:", error);
+    }
+  }
   async function handleAdd(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
     if (!title.trim()) {
@@ -58,21 +96,25 @@ function App() {
     }
   }
 
-  async function handleComplete(id: number) {
-    const res = await fetch(`http://localhost:5000/todo/${id}`, {
+  async function handleComplete(_id: string) {
+    const res = await fetch(`http://localhost:5000/todo/${_id}`, {
       method: "PATCH",
     });
 
     if (!res.ok) {
       return;
     }
-    const updatedTodos: Todo[] = await res.json();
-
-    setTodos(updatedTodos);
+    const updatedTodo: Todo = await res.json();
+    console.log("Updated todo:", updatedTodo);
+    setTodos((currentTodos) =>
+      currentTodos.map((todo) =>
+        todo._id === updatedTodo._id ? updatedTodo : todo,
+      ),
+    );
   }
 
-  async function handleDelete(id: number) {
-    const res = await fetch(`http://localhost:5000/todo/${id}`, {
+  async function handleDelete(_id: string) {
+    const res = await fetch(`http://localhost:5000/todo/${_id}`, {
       method: "DELETE",
     });
 
@@ -80,7 +122,7 @@ function App() {
       throw new Error("Failed to delete todo");
     }
 
-    setTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== id));
+    setTodos((currentTodos) => currentTodos.filter((todo) => todo._id !== _id));
   }
   return (
     <div className="min-h-screen bg-gray-950 px-4 py-10 text-white">
@@ -100,9 +142,15 @@ function App() {
 
           <button
             className="rounded-lg bg-blue-600 px-5 py-3 font-medium hover:bg-blue-500"
-            onClick={(e) => handleAdd(e)}
+            onClick={(e) => {
+              if (editingId) {
+                handleupdate();
+              } else {
+                handleAdd(e);
+              }
+            }}
           >
-            Add
+            {editingId ? "Update" : "Add"}
           </button>
         </div>
 
@@ -110,7 +158,7 @@ function App() {
         <div className="space-y-3">
           {todos.map((todo) => (
             <div
-              key={todo.id}
+              key={todo._id}
               className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900 p-4"
             >
               <div>
@@ -131,14 +179,20 @@ function App() {
 
               <div className="flex gap-2">
                 <button
+                  onClick={() => handleEdit(todo)}
+                  className="rounded-md bg-blue-500/10 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/20"
+                >
+                  Edit
+                </button>
+                <button
                   className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-400 hover:bg-green-500/20"
-                  onClick={() => handleComplete(todo.id)}
+                  onClick={() => handleComplete(todo._id)}
                 >
                   Complete
                 </button>
 
                 <button
-                  onClick={() => handleDelete(todo.id)}
+                  onClick={() => handleDelete(todo._id)}
                   className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
                 >
                   Delete
